@@ -21,12 +21,19 @@ SUPABASE_BASE_RESUME_TABLE_NAME = "base_resume"
 BASE_RESUME_PATH = "resume.json"
 
 # API Keys
+# Priority order: LLM_API_KEY → GEMINI_API_KEY → OPENAI_API_KEY → GROQ_API_KEY
 LLM_API_KEY = (
     os.environ.get("LLM_API_KEY")
-    or os.environ.get("OPENAI_API_KEY")
     or os.environ.get("GEMINI_API_KEY")
-    or os.environ.get("GEMINI_FIRST_API_KEY")
+    or os.environ.get("OPENAI_API_KEY")
+    or os.environ.get("GROQ_API_KEY")
 )
+
+# Provider-specific API keys (for direct provider access if needed)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+
 # =================================================================
 # 2. USER PREFERENCES
 # =================================================================
