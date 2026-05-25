@@ -13,3 +13,4 @@ reportlab
 sentence-transformers
 streamlit
 pandas
+PyPDF2
