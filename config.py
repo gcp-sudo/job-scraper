@@ -29,17 +29,15 @@ PERSONALIZED_RESUMES_BUCKET = "personalized_resumes"
 # --- Scraping Configuration ---
 SCRAPING_SOURCES = ["linkedin", "gulf", "startup", "freelance", "fresher"]
 
-# Detailed search configuration for each source
 SEARCH_CONFIG = {
     "linkedin": {
         "queries": ["DevOps Engineer", "Cloud Engineer", "SRE"],
         "location": "India",
-        "results_to_scrape": 50, # Max jobs to scrape per query
-        # --- LinkedIn Specific Filters (see README for details) ---
-        "geo_id": 102713980, # Geo ID for India
-        "job_posting_date": "r86400", # Last 24 hours
-        "job_type": "F", # Full-time
-        "work_type": 2 # Remote
+        "results_to_scrape": 50,
+        "geo_id": 102713980,
+        "job_posting_date": "r86400",
+        "job_type": "F",
+        "work_type": 2
     },
     "gulf": {
         "queries": ["DevOps Engineer", "Cloud Engineer"], 
@@ -62,12 +60,12 @@ SEARCH_CONFIG = {
 # --- Job Processing Limits ---
 JOBS_TO_SCORE_PER_RUN = 50
 JOBS_TO_CUSTOMIZE_PER_RUN = 10
-MINIMUM_SCORE_FOR_AUTOGENERATE = 7 # Score out of 10
+MINIMUM_SCORE_FOR_AUTOGENERATE = 7
 
 # --- Job Maintenance Settings ---
 JOB_EXPIRY_DAYS = 30
 JOB_CHECK_DAYS = 3
-JOB_DELETION_DAYS = 60 # Archive jobs older than this
+JOB_DELETION_DAYS = 60
 JOB_CHECK_LIMIT = 50
 
 # --- LLM Configuration ---
@@ -77,13 +75,28 @@ LLM_CONFIG = {
     "gemini": {
         "model": "gemini/gemini-1.5-flash-latest",
         "fallback_models": ["gpt-4o-mini", "groq/llama3-70b-8192"],
+        "max_rpm": 10,
+        "max_retries": 3,
+        "daily_budget": 0,
+        "retry_base_delay": 10,
+        "request_delay": 5,
     },
     "openai": {
         "model": "gpt-4o-mini",
         "fallback_models": ["gemini/gemini-1.5-flash-latest", "groq/llama3-70b-8192"],
+        "max_rpm": 15,
+        "max_retries": 3,
+        "daily_budget": 0,
+        "retry_base_delay": 10,
+        "request_delay": 3,
     },
     "groq": {
         "model": "groq/llama3-70b-8192",
         "fallback_models": ["gemini/gemini-1.5-flash-latest", "gpt-4o-mini"],
+        "max_rpm": 25,
+        "max_retries": 2,
+        "daily_budget": 0,
+        "retry_base_delay": 5,
+        "request_delay": 2,
     }
 }
