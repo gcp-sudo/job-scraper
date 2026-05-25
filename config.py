@@ -71,7 +71,7 @@ JOB_DELETION_DAYS = 60
 JOB_CHECK_LIMIT = 50
 
 # --- LLM Configuration ---
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "groq").lower()
 
 LLM_CONFIG = {
     "gemini": {
