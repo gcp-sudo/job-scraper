@@ -5,7 +5,7 @@ supabase
 httpx
 pdfplumber
 google-genai
-litellm
+litellm[bedrock]
 pydantic
 playwright
 markdownify

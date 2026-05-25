@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def get_table_name(source: str) -> str:
     """Gets the table name for a given source from the config mapping."""
-    table_name = config.SUPABASE_TABLE_MAP.get(source)
+    table_name = config.TABLE_MAP.get(source)
     if not table_name:
         logging.error(f"No table mapping found for source: {source}")
         raise ValueError(f"Invalid source: {source}")
