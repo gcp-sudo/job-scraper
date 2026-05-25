@@ -1,5 +1,4 @@
-branches:
-      - '*'
+
 name: Run Main Job Workflow
 
 on:
