@@ -25,6 +25,8 @@ TABLE_MAP = {
 CUSTOMIZED_RESUMES_TABLE = "customized_resumes"
 BASE_RESUME_TABLE = "base_resume"
 PERSONALIZED_RESUMES_BUCKET = "personalized_resumes"
+RESUMES_BUCKET = "resumes" # Bucket for base resume
+BASE_RESUME_PATH = "parsed_resume.json" # Local path for parsed resume
 
 # --- Scraping Configuration ---
 SCRAPING_SOURCES = ["linkedin", "gulf", "startup", "freelance", "fresher"]
