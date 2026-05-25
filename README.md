@@ -11,12 +11,12 @@ This dual-workflow architecture ensures that your resume is parsed only when nec
 
 ## Key Features
 
+*   **Interactive Web Dashboard:** A built-in Streamlit dashboard to visualize your job pipeline, filter results, and download customized resumes.
 *   **Multi-Source Job Scraping:** Aggregates job postings from LinkedIn, GulfTalent, and other niche job boards.
 *   **AI-Powered Job Scoring:** Uses Large Language Models (LLMs) to intelligently score and rank jobs based on their relevance to your skills and experience.
 *   **Automated Resume Customization:** Generates a unique, keyword-optimized resume for each high-scoring job, significantly increasing your chances of passing ATS filters.
 *   **Dynamic LLM Fallback:** Intelligently switches between multiple LLM providers (Gemini, OpenAI, Groq) to ensure high availability and cost-effectiveness.
 *   **Cloud-Native & Serverless:** Built entirely on a modern, serverless stack using Supabase for the database and storage, and GitHub Actions for orchestration.
-*   **Centralized Configuration:** A single, easy-to-manage `config.py` file allows for simple configuration of all system parameters.
 
 ## How It Works
 
@@ -37,32 +37,44 @@ This dual-workflow architecture ensures that your resume is parsed only when nec
 
 ### Prerequisites
 
-1.  **Supabase Project:** Create a new project on [Supabase](https://supabase.com/).
-2.  **API Keys:** Obtain API keys for the LLM providers you wish to use (Gemini, OpenAI, Groq).
-3.  **GitHub Account:** A GitHub account with access to GitHub Actions.
+1.  **Python & Pip:** Ensure you have Python 3.8+ and pip installed on your local machine.
+2.  **Supabase Project:** Create a new project on [Supabase](https://supabase.com/).
+3.  **API Keys:** Obtain API keys for the LLM providers you wish to use (Gemini, OpenAI, Groq).
+4.  **GitHub Account:** A GitHub account with access to GitHub Actions.
 
 ### Setup Instructions
 
-1.  **Fork this Repository:** Fork this repository to your own GitHub account.
-2.  **Create Supabase Tables:** In the Supabase SQL Editor, run the `schema.sql` script to create the required tables and storage buckets.
-3.  **Set up GitHub Secrets:** In your forked repository, go to `Settings > Secrets and variables > Actions` and create the following secrets:
-    *   `SUPABASE_URL`: Your Supabase project URL.
-    *   `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key.
-    *   `GEMINI_API_KEY`: Your Google AI Studio API key.
-    *   `OPENAI_API_KEY`: Your OpenAI API key.
-    *   `GROQ_API_KEY`: Your Groq API key.
-4.  **Configure `config.py`:** Review and customize the `config.py` file to set your desired search queries, scraping sources, and LLM preferences. The `LLM_PROVIDER` variable determines which LLM will be used as the primary model.
-5.  **Run the "Parse Resume" Workflow:**
-    *   Go to the "Actions" tab in your repository.
-    *   Select the "Parse Resume" workflow.
-    *   Click "Run workflow" and upload your master resume when prompted.
-6.  **Enable and Run the "Job Processing" Workflow:**
-    *   Go to the "Actions" tab.
-    *   Enable the "Job Processing" workflow.
-    *   You can now run this workflow manually or let it run on its schedule.
+1.  **Clone this Repository:** Clone this repository to your local machine.
+2.  **Create `.env` file:** In the root of the project, create a file named `.env` and add your credentials:
+    ```
+    SUPABASE_URL="your_supabase_project_url"
+    SUPABASE_SERVICE_ROLE_KEY="your_supabase_service_role_key"
+    GEMINI_API_KEY="your_gemini_api_key"
+    OPENAI_API_KEY="your_openai_api_key"
+    GROQ_API_KEY="your_groq_api_key"
+    ```
+3.  **Install Dependencies:** Open a terminal in the project root and run:
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **Create Supabase Tables:** In the Supabase SQL Editor, run the `schema.sql` script to create the required tables and storage buckets.
+5.  **Run the "Parse Resume" Workflow:** To use the automated GitHub Actions, set up the secrets as described in the original `README.md` and run the "Parse Resume" workflow from the Actions tab.
+6.  **Run the "Job Processing" Workflow:** Enable and run the "Job Processing" workflow from the Actions tab.
+
+## Running the Web Dashboard
+
+This project includes an interactive web dashboard built with Streamlit to help you visualize your job data.
+
+1.  **Ensure Dependencies are Installed:** Make sure you have completed the setup steps and installed all the packages from `requirements.txt`.
+2.  **Run the App:** In your terminal, from the project root, run the following command:
+    ```bash
+    streamlit run app.py
+    ```
+3.  **View in Browser:** The command will start a local web server and provide you with a URL (usually `http://localhost:8501`). Open this URL in your web browser to view the dashboard.
 
 ## Technical Details
 
+*   **Dashboard:** [Streamlit](https://streamlit.io/)
 *   **Database:** [Supabase](https://supabase.com/) (PostgreSQL)
 *   **Storage:** [Supabase Storage](https://supabase.com/storage)
 *   **Orchestration:** [GitHub Actions](https://github.com/features/actions)
