@@ -17,21 +17,30 @@ async def download_resume_from_storage(file_path: str) -> Optional[bytes]:
     """Downloads a file from the 'resumes' Supabase Storage bucket."""
     try:
         bucket_name = config.RESUMES_BUCKET
-        response = await supabase.storage.from_(bucket_name).download(file_path)
+        
+        # The supabase-py download method is synchronous, so we run it in an executor
+        # to avoid blocking the asyncio event loop.
+        loop = asyncio.get_running_loop()
+        response_bytes = await loop.run_in_executor(
+            None, lambda: supabase.storage.from_(bucket_name).download(file_path)
+        )
+
         logging.info(f"Successfully downloaded {file_path} from storage bucket {bucket_name}.")
-        return response
+        return response_bytes
     except Exception as e:
-        if "The resource was not found" in str(e):
+        # The library might wrap the original exception.
+        original_exception = e.__cause__ if e.__cause__ else e
+        if "The resource was not found" in str(original_exception):
             logging.error(f"Resume file '{file_path}' not found in storage bucket '{bucket_name}'. Please upload your resume.")
         else:
-            logging.error(f"Error downloading {file_path} from storage: {e}")
+            logging.error(f"Error downloading {file_path} from storage: {original_exception}")
         return None
 
 async def save_base_resume(resume_data: Dict[str, Any]) -> bool:
     """Saves the parsed base resume data, ensuring only one record exists."""
     try:
         # Delete all existing records to ensure only one base resume exists.
-        await supabase.table(config.BASE_RESUME_TABLE).delete().neq('id', '00000000-0000-0000-0000-000000000000').execute() # Delete all
+        await supabase.table(config.BASE_RESUME_TABLE).delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
         
         # Insert the new base resume.
         response = await supabase.table(config.BASE_RESUME_TABLE).insert(resume_data).execute()
@@ -69,11 +78,13 @@ async def upload_customized_resume_to_storage(file_content: bytes, destination_p
     """Uploads a resume PDF to Supabase Storage and returns its public URL."""
     try:
         bucket_name = config.PERSONALIZED_RESUMES_BUCKET
+        # Assuming upload is async; if not, it would also need run_in_executor
         await supabase.storage.from_(bucket_name).upload(
             path=destination_path, 
             file=file_content, 
             file_options={'content-type': 'application/pdf', 'upsert': 'true'}
         )
+        # get_public_url is synchronous
         response = supabase.storage.from_(bucket_name).get_public_url(destination_path)
         public_url = response
         logging.info(f"Uploaded resume to {public_url}")
