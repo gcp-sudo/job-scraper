@@ -11,3 +11,5 @@ playwright
 markdownify
 reportlab
 sentence-transformers
+streamlit
+pandas
