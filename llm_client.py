@@ -67,18 +67,6 @@ class LLMClient:
     def _get_model_pool(self) -> List[str]:
         return [self.model] + self.fallback_models
 
-    def _get_api_key_for_model(self, model: str) -> Optional[str]:
-        provider = model.split('/')[0] if '/' in model else None
-        if "gpt" in model: provider = "openai"
-        elif "gemini" in model: provider = "gemini"
-        
-        key_map = {
-            "openai": config.OPENAI_API_KEY,
-            "gemini": config.GEMINI_API_KEY,
-            "groq": config.GROQ_API_KEY,
-        }
-        return key_map.get(provider)
-
     def generate_content(self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 1,
                          response_format: Optional[Type[BaseModel]] = None, model_override: Optional[str] = None) -> str:
         self._check_daily_budget()
@@ -89,7 +77,6 @@ class LLMClient:
         base_kwargs = {"messages": messages, "temperature": temperature}
 
         if response_format:
-            # Convert Pydantic model to JSON schema for the 'tools' parameter
             schema = response_format.model_json_schema()
             tool_name = schema.get("title", "structured_output")
             base_kwargs["tools"] = [
@@ -117,10 +104,9 @@ class LLMClient:
 
                     kwargs = base_kwargs.copy()
                     kwargs["model"] = model
-                    api_key = self._get_api_key_for_model(model)
-                    if api_key: kwargs["api_key"] = api_key
 
                     logger.info(f"Attempt {attempt + 1}/{self.max_retries + 1} with model: {model}")
+                    # LiteLLM automatically handles API keys from environment variables
                     response = litellm.completion(**kwargs)
                     self._daily_count += 1
 
@@ -155,7 +141,6 @@ class LLMClient:
         
         logger.error(f"All models in the pool failed. Last error: {last_exception}")
         raise last_exception if last_exception else RuntimeError("LLM generation failed for all models.")
-
 
 def _create_primary_client() -> LLMClient:
     """Creates the primary LLM client from config."""
