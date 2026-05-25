@@ -28,7 +28,7 @@ async def mark_expired_jobs(table_name: str):
     """Marks old jobs in a given table as expired."""
     logging.info(f"--- Starting Task: Mark Expired Jobs for {table_name} ---")
     expiry_date_str = get_past_date(config.JOB_EXPIRY_DAYS).isoformat()
-    excluded_statuses = ['applied', 'offer', 'interviewing', 'archived']
+    excluded_statuses = ['applied', 'offer', 'interview', 'archived']
 
     try:
         # REMOVED await - .execute() is not awaitable in this library version
