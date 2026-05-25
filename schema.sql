@@ -13,7 +13,9 @@ CREATE TYPE "job_status" AS ENUM (
     'resume_generated',
     'applied',
     'archived',
-    'expired'
+    'expired',
+    'offer',
+    'removed'
 );
 
 -- Create a generic function to create a job table
