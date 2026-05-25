@@ -81,7 +81,6 @@ class LLMClient:
     def __init__(
         self,
         model: str,
-        api_key: Optional[str] = None,
         max_rpm: int = 10,
         max_retries: int = 3,
         retry_base_delay: int = 10,
@@ -90,12 +89,6 @@ class LLMClient:
         fallback_models: Optional[List[str]] = None,
     ):
         self.model = model
-
-        # NOTE:
-        # self.api_key is intentionally NOT used globally anymore
-        # because fallback providers require different keys.
-        self.api_key = api_key
-
         self.max_retries = max_retries
         self.retry_base_delay = retry_base_delay
         self.daily_budget = daily_budget
@@ -138,7 +131,7 @@ class LLMClient:
         if model.startswith("gemini"):
             return "gemini"
 
-        if model.startswith("groq/"):
+        if "groq" in model:
             return "groq"
 
         if model.startswith("claude"):
@@ -156,14 +149,11 @@ class LLMClient:
 
         provider = self._get_provider_from_model(model)
 
+        # Directly use the config attributes for keys
         key_map = {
-            "openai": os.getenv("OPENAI_API_KEY"),
-            "gemini": os.getenv("GEMINI_API_KEY"),
-            "groq": os.getenv("GROQ_API_KEY"),
-            "anthropic": os.getenv("ANTHROPIC_API_KEY"),
-            "deepseek": os.getenv("DEEPSEEK_API_KEY"),
-            "mistral": os.getenv("MISTRAL_API_KEY"),
-            "openrouter": os.getenv("OPENROUTER_API_KEY"),
+            "openai": config.OPENAI_API_KEY,
+            "gemini": config.GEMINI_API_KEY,
+            "groq": config.GROQ_API_KEY,
         }
 
         return key_map.get(provider)
@@ -205,7 +195,10 @@ class LLMClient:
         }
 
         if response_format is not None:
-            base_kwargs["response_format"] = response_format
+            # Forcing JSON mode with Pydantic models
+            base_kwargs["response_model"] = response_format
+            base_kwargs["response_format"] = {"type": "json_object"}
+
 
         model_pool = (
             [model_override]
@@ -250,7 +243,7 @@ class LLMClient:
 
                 if api_key:
                     logger.info(
-                        f"API key prefix: {api_key[:6]}"
+                        f"API key prefix: {api_key[:6]}..."
                     )
 
                 response = litellm.completion(**kwargs)
@@ -354,7 +347,6 @@ class LLMClient:
 
 def _create_client(
     model: str,
-    api_key: Optional[str] = None,
     fallback_models: Optional[List[str]] = None,
 ) -> LLMClient:
     """
@@ -363,7 +355,6 @@ def _create_client(
 
     return LLMClient(
         model=model,
-        api_key=api_key,
         max_rpm=config.LLM_MAX_RPM,
         max_retries=config.LLM_MAX_RETRIES,
         retry_base_delay=config.LLM_RETRY_BASE_DELAY,
@@ -378,6 +369,5 @@ def _create_client(
 
 primary_client = _create_client(
     model=config.LLM_MODEL,
-    api_key=config.LLM_API_KEY,
     fallback_models=config.LLM_FALLBACK_MODELS,
 )
