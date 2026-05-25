@@ -75,7 +75,7 @@ LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
 
 LLM_CONFIG = {
     "gemini": {
-        "model": "gemini/gemini-1.5-flash-latest",
+        "model": "gemini-1.5-flash-latest",
         "fallback_models": ["gpt-4o-mini", "groq/llama3-70b-8192"],
         "max_rpm": 10,
         "max_retries": 3,
@@ -85,7 +85,7 @@ LLM_CONFIG = {
     },
     "openai": {
         "model": "gpt-4o-mini",
-        "fallback_models": ["gemini/gemini-1.5-flash-latest", "groq/llama3-70b-8192"],
+        "fallback_models": ["gemini-1.5-flash-latest", "groq/llama3-70b-8192"],
         "max_rpm": 15,
         "max_retries": 3,
         "daily_budget": 0,
@@ -94,7 +94,7 @@ LLM_CONFIG = {
     },
     "groq": {
         "model": "groq/llama3-70b-8192",
-        "fallback_models": ["gemini/gemini-1.5-flash-latest", "gpt-4o-mini"],
+        "fallback_models": ["gemini-1.5-flash-latest", "gpt-4o-mini"],
         "max_rpm": 25,
         "max_retries": 2,
         "daily_budget": 0,
