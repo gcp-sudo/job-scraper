@@ -57,6 +57,27 @@ LLM_FALLBACK_MODELS = [
     "groq/llama-3.3-70b-versatile",  # Groq secondary fallback
 ]
 
+# --- Job Filtering ---
+# Keywords to check for in job descriptions. If a job description doesn't
+# contain any of these keywords, it will be skipped for LLM scoring.
+# Set to an empty list to disable keyword filtering.
+TARGET_KEYWORDS = [
+    "Kubernetes",
+    "GCP",
+    "Terraform",
+    "DevOps",
+    "Cloud Engineer",
+    "Platform Engineer",
+    "Infrastructure Engineer",
+    "SRE",
+    "CI/CD",
+    "Docker",
+    "GKE",
+    "Google Cloud",
+    "DevSecOps",
+    "Observability",
+]
+
 # =================================================================
 # LINKEDIN SEARCH CONFIGURATION
 # =================================================================
