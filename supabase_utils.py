@@ -632,4 +632,3 @@ def get_base_resume() -> Optional[dict]:
     except Exception as e:
         logging.error(f"Error fetching base resume from Supabase: {e}", exc_info=True)
         return None
-
