@@ -5,7 +5,12 @@ from typing import List
 import io
 
 # Third-party libraries
-import PyPDF2
+try:
+    import PyPDF2
+except ImportError:
+    print("Error: PyPDF2 is not installed. Please run 'pip install PyPDF2'")
+    exit(1)
+
 from pydantic import BaseModel, Field
 
 # Internal modules
@@ -35,7 +40,6 @@ async def parse_resume_text(resume_text: str) -> ParsedResume:
     Please extract the full text, a list of skills, and a summary of the professional experience.
     """
     
-    # Use the corrected generate_content method. It now correctly handles the Pydantic model.
     response_json_str = await asyncio.to_thread(
         primary_client.generate_content,
         prompt=prompt,
@@ -43,7 +47,6 @@ async def parse_resume_text(resume_text: str) -> ParsedResume:
         response_format=ParsedResume
     )
     
-    # Parse the JSON string into the Pydantic model
     parsed_data = json.loads(response_json_str)
     return ParsedResume(**parsed_data)
 
@@ -85,8 +88,6 @@ async def main():
         else:
             logging.error("Failed to save the parsed resume to the database.")
 
-    except ImportError:
-        logging.error("PyPDF2 is not installed. Please add it to your requirements.txt and install.")
     except Exception as e:
         logging.error(f"An error occurred during resume processing: {e}", exc_info=True)
 
