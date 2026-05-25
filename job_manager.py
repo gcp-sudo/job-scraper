@@ -28,7 +28,8 @@ async def mark_expired_jobs(table_name: str):
     """Marks old jobs in a given table as expired."""
     logging.info(f"--- Starting Task: Mark Expired Jobs for {table_name} ---")
     expiry_date_str = get_past_date(config.JOB_EXPIRY_DAYS).isoformat()
-    excluded_statuses = ['applied', 'offer', 'interview', 'archived']
+    # Temporarily removed 'interview' to prevent crashing due to unknown enum value.
+    excluded_statuses = ['applied', 'offer', 'archived']
 
     try:
         # REMOVED await - .execute() is not awaitable in this library version
@@ -76,7 +77,6 @@ async def run(table_name: str):
     
     await mark_expired_jobs(table_name)
     
-    # FIXED config.SUPABASE_TABLE_MAP to config.TABLE_MAP
     if table_name == config.TABLE_MAP.get("linkedin"):
         await check_linkedin_job_activity(table_name)
     else:
