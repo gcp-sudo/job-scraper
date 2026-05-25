@@ -1,7 +1,8 @@
 name: Run Main Job Workflow
 
 on:
-  workflow_dispatch:
+  push: # Run on every push to any branch
+  workflow_dispatch: # Allow manual runs
   schedule:
     - cron: '0 * * * *' # Runs every hour
 
