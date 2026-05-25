@@ -1,152 +1,119 @@
-import pdfplumber
-import config
+
+import asyncio
 import json
+import logging
+import os
+import sys
+import pdfplumber
+
+import config
 import models
+import supabase_utils
 from llm_client import primary_client
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def extract_text_from_pdf(pdf_path):
-    """
-    Extracts text from a given PDF file.
-
-    Args:
-        pdf_path (str): The file path to the PDF resume.
-
-    Returns:
-        str: The extracted text content from the PDF.
-    """
-    print(f"Extracting text from: {pdf_path}")
+    """Extracts text from a given PDF file."""
+    logging.info(f"Extracting text from: {pdf_path}")
     text = ""
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            # Extract the visible text
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-            
-            # Extract embedded hyperlinks which are not captured by extract_text()
-            if page.hyperlinks:
-                for link in page.hyperlinks:
-                    uri = link.get("uri")
-                    if uri:
-                        text += f"Embedded Link: {uri}\n"
-    return text
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+                if page.hyperlinks:
+                    for link in page.hyperlinks:
+                        uri = link.get("uri")
+                        if uri:
+                            text += f" Embedded Link: {uri}\n"
+        return text
+    except Exception as e:
+        logging.error(f"Error extracting text from {pdf_path}: {e}")
+        return None
 
 def parse_resume_with_ai(resume_text):
-    """
-    Send resume text to an AI model and get structured information back.
-    
-    Args:
-        resume_text (str): The plain text extracted from the resume
-        
-    Returns:
-        str: JSON string of structured resume information
-    """
-    print("Processing resume with AI model...")
-
-    prompt = f"""Extract and return the structured resume information from the text below. 
+    """Sends resume text to an AI model for structured parsing."""
+    logging.info("Processing resume with AI model...")
+    prompt = f'''Extract and return the structured resume information from the text below.
     Only use what is explicitly stated in the text and do not infer or invent any details.
-    
-    CRITICAL: If any information is missing or not available in the text, use "NA" for that field. 
-    This applies to all fields (e.g., summary, dates, location, links, etc.). 
-    Do NOT leave fields empty or use empty strings.
+    CRITICAL: If any information is missing or not available, use "NA" for that field.
 
     Resume text:
     {resume_text}
-    """
+    '''
+    try:
+        response_text = primary_client.generate_content(
+            prompt=prompt,
+            response_format=models.Resume,
+        )
+        return response_text
+    except Exception as e:
+        logging.error(f"AI processing failed: {e}")
+        return None
 
-    response_text = primary_client.generate_content(
-        prompt=prompt,
-        response_format=models.Resume,
-    )
-    return response_text
-
-def main():
-    """
-    Main function to orchestrate the resume parsing process.
-    Downloads the resume PDF from Supabase Storage, parses it with AI, 
-    and saves the structured data to both local file and Supabase DB.
-    """
-    import io
-    import os
-    import supabase_utils
-
+async def main():
+    """Main async function to orchestrate the resume parsing process."""
     pdf_file_path = "./resume.pdf"
 
-    # 1. Try to download resume PDF from Supabase Storage
-    pdf_bytes = supabase_utils.download_resume_from_storage("resume.pdf")
+    # 1. Download resume from Supabase Storage
+    pdf_bytes = await supabase_utils.download_resume_from_storage(os.path.basename(pdf_file_path))
 
-    if pdf_bytes:
-        print("Successfully downloaded resume.pdf from Supabase Storage.")
-        # Write to a temporary local file for pdfplumber
-        with open(pdf_file_path, 'wb') as f:
-            f.write(pdf_bytes)
-    elif os.path.exists(pdf_file_path):
-        print(f"Supabase Storage download failed. Using local file: {pdf_file_path}")
-    else:
-        print("ERROR: Could not find resume.pdf in Supabase Storage or locally.")
-        print("Please upload your resume.pdf to the 'resumes' bucket in your Supabase Storage dashboard.")
-        return
+    if not pdf_bytes:
+        logging.error("Failed to download or find resume. Please upload 'resume.pdf' to the 'resumes' bucket in Supabase.")
+        sys.exit(1)
+
+    logging.info("Successfully downloaded resume.pdf.")
+    with open(pdf_file_path, 'wb') as f:
+        f.write(pdf_bytes)
 
     # 2. Extract text from PDF
     resume_text = extract_text_from_pdf(pdf_file_path)
     if not resume_text:
-        print("Failed to extract text. Exiting.")
-        return
+        logging.error("Failed to extract text. Exiting.")
+        sys.exit(1)
 
-    # 3. Parse resume text with AI
-    parsed_resume_details_str = parse_resume_with_ai(resume_text)
-    if not parsed_resume_details_str:
-        print("Failed to parse resume. Exiting.")
-        return
+    # 3. Parse resume with AI
+    parsed_resume_str = parse_resume_with_ai(resume_text)
+    if not parsed_resume_str:
+        logging.error("Failed to parse resume. Exiting.")
+        sys.exit(1)
 
+    # 4. Process and save data
     try:
-        # Convert the JSON string response to a dictionary
-        resume_data_dict = json.loads(parsed_resume_details_str)
+        resume_data = json.loads(parsed_resume_str)
         
-        # Recursive function to replace empty values or None with "NA"
-        def replace_empty_with_na(data):
-            if isinstance(data, dict):
-                return {k: replace_empty_with_na(v) for k, v in data.items()}
-            elif isinstance(data, list):
-                return[replace_empty_with_na(i) for i in data]
-            elif data == "" or data is None:
-                return "NA"
-            return data
+        # Save to Supabase
+        success = await supabase_utils.save_base_resume(resume_data)
+        if success:
+            logging.info("Successfully saved parsed resume to Supabase.")
+        else:
+            logging.warning("Failed to save parsed resume to Supabase.")
 
-        resume_data_dict = replace_empty_with_na(resume_data_dict)
+        # Save locally for verification
+        output_path = os.path.join(os.path.dirname(__file__), 'parsed_resume.json')
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(resume_data, f, indent=4)
+        logging.info(f"Saved parsed resume to {output_path} for verification.")
 
     except json.JSONDecodeError as e:
-        print(f"Error decoding JSON response from AI: {e}")
-        print(f"Raw response: {parsed_resume_details_str}")
-        return
-
-    # 4. Save parsed data to Supabase base_resume table
-    save_success = supabase_utils.save_base_resume(resume_data_dict)
-    if save_success:
-        print("Successfully saved parsed resume to Supabase database.")
-    else:
-        print("WARNING: Failed to save parsed resume to Supabase database.")
-
-    # 5. Also save to local JSON file (for development/fallback)
-    output_path = config.BASE_RESUME_PATH
-    try:
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(resume_data_dict, f, indent=4)
-        print(f"Successfully saved parsed resume to local file: {output_path}")
+        logging.error(f"Error decoding JSON response from AI: {e}")
+        logging.error(f"Raw response: {parsed_resume_str}")
     except Exception as e:
-        print(f"Error saving resume to {output_path}: {e}")
+        logging.error(f"An error occurred during data processing: {e}")
 
-    # 6. Clean up the temporary PDF file (don't leave sensitive data on disk in CI)
-    if pdf_bytes and os.path.exists(pdf_file_path):
+    # 5. Clean up temporary file
+    if os.path.exists(pdf_file_path):
         try:
             os.remove(pdf_file_path)
-            print(f"Cleaned up temporary file: {pdf_file_path}")
+            logging.info(f"Cleaned up temporary file: {pdf_file_path}")
         except Exception as e:
-            print(f"Warning: Could not clean up {pdf_file_path}: {e}")
+            logging.warning(f"Could not clean up {pdf_file_path}: {e}")
 
-    print("\nResume processing finished.")
-
+    logging.info("\nResume processing finished.")
 
 if __name__ == "__main__":
-    print("Starting resume processing...")
-    main()
+    logging.info("Starting resume processing...")
+    asyncio.run(main())

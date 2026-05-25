@@ -11,7 +11,84 @@ if not config.SUPABASE_URL or not config.SUPABASE_SERVICE_ROLE_KEY:
     raise ValueError("Supabase URL and Key must be set in config.py or environment variables.")
 supabase: Client = create_client(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY)
 
-# --- Parameterized Functions for Multi-Table Architecture ---
+# --- Resume Handling ---
+
+async def download_resume_from_storage(file_path: str) -> Optional[bytes]:
+    """Downloads a file from the 'resumes' Supabase Storage bucket."""
+    try:
+        bucket_name = config.RESUMES_BUCKET
+        response = await supabase.storage.from_(bucket_name).download(file_path)
+        logging.info(f"Successfully downloaded {file_path} from storage bucket {bucket_name}.")
+        return response
+    except Exception as e:
+        if "The resource was not found" in str(e):
+            logging.error(f"Resume file '{file_path}' not found in storage bucket '{bucket_name}'. Please upload your resume.")
+        else:
+            logging.error(f"Error downloading {file_path} from storage: {e}")
+        return None
+
+async def save_base_resume(resume_data: Dict[str, Any]) -> bool:
+    """Saves the parsed base resume data, ensuring only one record exists."""
+    try:
+        # Delete all existing records to ensure only one base resume exists.
+        await supabase.table(config.BASE_RESUME_TABLE).delete().neq('id', '00000000-0000-0000-0000-000000000000').execute() # Delete all
+        
+        # Insert the new base resume.
+        response = await supabase.table(config.BASE_RESUME_TABLE).insert(resume_data).execute()
+        
+        if response.data:
+            logging.info("Successfully saved base resume to the database.")
+            return True
+        return False
+    except Exception as e:
+        logging.error(f"Error saving base resume to the database: {e}")
+        return False
+
+async def get_base_resume() -> Optional[Dict[str, Any]]:
+    """Fetches the single base resume from its dedicated table."""
+    try:
+        response = await supabase.table(config.BASE_RESUME_TABLE).select('*').limit(1).single().execute()
+        return response.data if response.data else None
+    except Exception as e:
+        logging.error(f"Error fetching base resume: {e}")
+        return None
+
+async def save_customized_resume(resume_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Saves a customized resume to the dedicated 'customized_resumes' table."""
+    try:
+        response = await supabase.table(config.CUSTOMIZED_RESUMES_TABLE).insert(resume_data).execute()
+        if response.data:
+            logging.info(f"Saved customized resume for job ID {resume_data.get('job_id')}")
+            return response.data[0]
+        return None
+    except Exception as e:
+        logging.error(f"Error saving customized resume: {e}")
+        return None
+
+async def upload_customized_resume_to_storage(file_content: bytes, destination_path: str) -> Optional[str]:
+    """Uploads a resume PDF to Supabase Storage and returns its public URL."""
+    try:
+        bucket_name = config.PERSONALIZED_RESUMES_BUCKET
+        await supabase.storage.from_(bucket_name).upload(
+            path=destination_path, 
+            file=file_content, 
+            file_options={'content-type': 'application/pdf', 'upsert': 'true'}
+        )
+        response = supabase.storage.from_(bucket_name).get_public_url(destination_path)
+        public_url = response
+        logging.info(f"Uploaded resume to {public_url}")
+        return public_url
+    except Exception as e:
+        logging.error(f"Error uploading file to Supabase Storage: {e}")
+        if 'Duplicate' in str(e):
+            logging.warning(f"File at {destination_path} already exists. Retrieving public URL.")
+            try:
+                return supabase.storage.from_(config.PERSONALIZED_RESUMES_BUCKET).get_public_url(destination_path)
+            except Exception as url_e:
+                logging.error(f"Could not retrieve URL for existing file: {url_e}")
+        return None
+
+# --- Job Data Handling ---
 
 async def get_existing_job_ids(table_name: str, batch_size: int = 1000) -> set:
     """Fetches all existing job IDs from a specific table for quick lookups."""
@@ -81,49 +158,3 @@ async def update_job_with_resume_link(table_name: str, job_id: str, customized_r
     except Exception as e:
         logging.error(f"Error updating job {job_id} in {table_name} with resume link: {e}")
         return False
-
-# --- Functions that are not table-specific (e.g., resumes) ---
-
-async def get_base_resume() -> Optional[Dict[str, Any]]:
-    """Fetches the single base resume from its dedicated table."""
-    try:
-        response = await supabase.table('base_resume').select('*').limit(1).single().execute()
-        return response.data if response.data else None
-    except Exception as e:
-        logging.error(f"Error fetching base resume: {e}")
-        return None
-
-async def save_customized_resume(resume_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Saves a customized resume to the dedicated 'customized_resumes' table."""
-    try:
-        response = await supabase.table('customized_resumes').insert(resume_data).execute()
-        if response.data:
-            logging.info(f"Saved customized resume for job ID {resume_data.get('job_id')}")
-            return response.data[0]
-        return None
-    except Exception as e:
-        logging.error(f"Error saving customized resume: {e}")
-        return None
-
-async def upload_customized_resume_to_storage(file_content: bytes, destination_path: str) -> Optional[str]:
-    """Uploads a resume PDF to Supabase Storage and returns its public URL."""
-    try:
-        bucket_name = 'personalized_resumes'
-        await supabase.storage.from_(bucket_name).upload(
-            path=destination_path, 
-            file=file_content, 
-            file_options={'content-type': 'application/pdf', 'upsert': 'true'}
-        )
-        response = supabase.storage.from_(bucket_name).get_public_url(destination_path)
-        public_url = response
-        logging.info(f"Uploaded resume to {public_url}")
-        return public_url
-    except Exception as e:
-        logging.error(f"Error uploading file to Supabase Storage: {e}")
-        if 'Duplicate' in str(e):
-            logging.warning(f"File at {destination_path} already exists. Retrieving public URL.")
-            try:
-                return supabase.storage.from_('personalized_resumes').get_public_url(destination_path)
-            except Exception as url_e:
-                logging.error(f"Could not retrieve URL for existing file: {url_e}")
-        return None
